@@ -1,0 +1,17 @@
+{
+  "name": "web-scraping-poc",
+  "version": "1.0.0",
+  "description": "",
+  "bin" : {
+    "scraper" : "./app.js"
+  },
+  "dependencies": {
+    "request": "latest",
+    "cheerio": "latest",
+    "mongodb": "latest",
+    "co": "latest",
+    "commander": "^2.9.0",
+    "config": "^1.26.1",
+    "async": "^2.4.0"
+  }
+}
