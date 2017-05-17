@@ -8,12 +8,17 @@ var parseArticle = function(article, $) {
   var itemLinkDOM = article.find('.item-link');
   var title = itemLinkDOM.attr('title');
   var href = itemLinkDOM.attr('href');
-  var price = article.find('.item-price').text();
-
   var id;
   if (typeof href != 'undefined') {
     id = href.replace(/\//g, '').replace(/inmueble/, '');
   }
+
+  if (id == null) {
+    return null;
+  }
+
+  var price = article.find('.item-price').text();
+  price = parseInt(price.replace(/\./g, '').replace(/€/, ''));
 
   var size;
   var rooms;
@@ -21,10 +26,10 @@ var parseArticle = function(article, $) {
   article.find('.item-detail').each(function() {
     const itemDetail = $(this).text();
     if (itemDetail.indexOf('hab.') != -1) {
-      size = itemDetail;
+      rooms = parseInt(itemDetail.replace(/hab./, ''));
     }
     else if (itemDetail.indexOf('m²') != -1) {
-      rooms = itemDetail;
+      size = parseInt(itemDetail.replace(/m²/, ''));
     }
     else {
       other = itemDetail;
@@ -52,7 +57,6 @@ var parseArticle = function(article, $) {
 var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
 
   var filterURL = baseURL + filter.link;
-
   var url;
   if (counter == 1 ) {
     url = filterURL
@@ -61,23 +65,22 @@ var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
     url = filterURL + 'pagina-' + counter + '.htm';
   }
 
-
   request(url, function(error, response, html){
 
       if(!error){
-          console.log ('URL -> ', url);
+          console.log ('Processing ', url);
           var $ = cheerio.load(html);
           if ($('article').length == 0) {
             callback(resultList, filter.collection);
           }
           else {
-
             $('article').each(function() {
               const article = $(this);
               const item = parseArticle(article, $);
-              resultList.push(item);
+              if (item != null) {
+                resultList.push(item);
+              }
             });
-
             counter++;
             getWebData(baseURL, filter, counter, resultList, callback);
           }
