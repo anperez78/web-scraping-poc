@@ -8,3 +8,6 @@ npm install
 sudo npm link
 
 > scraper search
+
+$ openssl aes-256-cbc -in secretfile.txt -out secretfile.txt.enc -pass file:secret.key
+$ openssl aes-256-cbc -d -in secretfile.txt.enc -out secretfile.txt -pass file:secret.key
