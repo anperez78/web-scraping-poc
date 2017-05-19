@@ -6,7 +6,7 @@
     "scraper" : "./app.js"
   },
   "scripts": {
-    "test": "mocha tests --recursive --watch"
+    "test": "mocha tests --recursive"
   },
   "dependencies": {
     "request": "latest",
@@ -15,7 +15,7 @@
     "co": "latest",
     "commander": "^2.9.0",
     "config": "^1.26.1",
-    "mocha": "^3.4.1",
+    "mocha-co": "^1.17.2",
     "chai": "^3.5.0"
   }
 }

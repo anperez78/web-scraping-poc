@@ -3,18 +3,20 @@
 var co = require('co');
 var MongoClient = require('mongodb').MongoClient;
 
-var storeDocuments = function (url, collection, myDocuments) {
+var storeDocuments = function (url, collection, myDocuments, storeAggregateDataFlag) {
   co(function*() {
     var db = yield MongoClient.connect(url);
     var r = yield db.collection(collection).insertMany(myDocuments);
     db.close();
-    storeAggregateData(url, collection);
+    if (storeAggregateDataFlag) {
+      calculateAndStoreAggregateData(url, collection);
+    }
   }).catch(function(err) {
     console.log(err.stack);
   });
 };
 
-var storeAggregateData = function (dbURL, collection) {
+var calculateAndStoreAggregateData = function (dbURL, collection) {
   co(function*() {
       const item_id = {};
       item_id["id"] = collection;
@@ -88,6 +90,6 @@ var dropCollection = function(url, collection) {
 
 module.exports = {
   storeDocuments: storeDocuments,
-  storeAggregateData: storeAggregateData,
+  countDocuments: countDocuments,
   dropCollection: dropCollection
 }
