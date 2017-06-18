@@ -9,7 +9,7 @@ var baseURL = config.get('baseURL');
 
 var storeData = function(resultList, collection) {
   const dbURL = 'mongodb://localhost:27017/prices';
-  dataStore.storeDocuments(dbURL, collection, resultList, true);
+  dataStore.storeAllData(dbURL, collection, resultList, 'aggregate_data');
   console.log('Job done!');
 };
 

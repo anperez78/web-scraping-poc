@@ -1,46 +1,54 @@
 'use strict';
 
+var moment = require('moment');
+
 var co = require('co');
 var MongoClient = require('mongodb').MongoClient;
 
-var storeDocuments = function (url, collection, myDocuments, storeAggregateDataFlag) {
-  co(function*() {
-    var db = yield MongoClient.connect(url);
-    var r = yield db.collection(collection).insertMany(myDocuments);
-    db.close();
-    if (storeAggregateDataFlag) {
-      calculateAndStoreAggregateData(url, collection);
-    }
-  }).catch(function(err) {
-    console.log(err.stack);
-  });
-};
+var storeAllData  = co.wrap(function* (url, collection, myDocuments, aggregateCollection) {
+  yield storeFlatsAndPrices(url, collection, myDocuments);
+  yield calculateAndStoreAggregateData(url, collection, aggregateCollection);
+});
 
-var calculateAndStoreAggregateData = function (dbURL, collection) {
-  co(function*() {
-      const item_id = {};
-      item_id["id"] = collection;
-      item_id["date"] =  new Date();
-
-      const item = {};
-      item["_id"] = item_id;
-
-      item["countDocuments"] =  yield countDocuments(dbURL, collection);
-      item["countNullPrice"] =  yield countNullPrice(dbURL, collection);
-      item["countNaNPrice"] =  yield countNaNPrice(dbURL, collection);
-      item["avgPrice"] = yield calculateAveragePrice(dbURL, collection);
-
-      var db = yield MongoClient.connect(dbURL);
-      var r = yield db.collection('aggregate_data').insertOne(item);
-      db.close();
-    }).catch(function(err) {
-      console.log(err.stack);
-    });
-}
-
-var countDocuments = co.wrap(function* (url, collection) {
+var storeFlatsAndPrices = co.wrap(function* (url, collection, myDocuments) {
   var db = yield MongoClient.connect(url);
-  var count = yield db.collection(collection).find().count();
+  var r = yield db.collection(collection).insertMany(myDocuments);
+  db.close();
+});
+
+var calculateAndStoreAggregateData = co.wrap(function* (dbURL, collection, aggregateCollection) {
+
+  const item_id = {};
+  const currentDate = new Date();
+  item_id["id"] = collection;
+  item_id["date"] = currentDate;
+
+  const item = {};
+  item["_id"] = item_id;
+
+  item["countDocuments"] =  yield countDocuments(dbURL, collection, currentDate);
+  item["countNullPrice"] =  yield countNullPrice(dbURL, collection);
+  item["countNaNPrice"] =  yield countNaNPrice(dbURL, collection);
+  item["avgPrice"] = yield calculateAveragePrice(dbURL, collection);
+
+  var db = yield MongoClient.connect(dbURL);
+  var r = yield db.collection(aggregateCollection).insertOne(item);
+  db.close();
+});
+
+var countDocuments = co.wrap(function* (url, collection, limitDate) {
+
+  var limitDateLimit = moment(limitDate).add(1, 'days');
+
+  var db = yield MongoClient.connect(url);
+  var count = yield db.collection(collection).find(
+      {"_id.date":
+        {
+          $gte: new Date(getIsoDateFormat(limitDate)),
+          $lt: new Date(getIsoDateFormat(limitDateLimit))
+        }
+      }
+    ).count();
   db.close();
   console.log("Number of records for " + collection + " -> ", count);
   return count;
@@ -88,8 +96,14 @@ var dropCollection = function(url, collection) {
   });
 }
 
+var getIsoDateFormat = function (theDate) {
+  var momentDate = moment(theDate);
+  return momentDate.format("YYYY-MM-DD") + "T00:00:00.000Z";
+}
+
 module.exports = {
-  storeDocuments: storeDocuments,
+  storeAllData: storeAllData,
   countDocuments: countDocuments,
-  dropCollection: dropCollection
+  dropCollection: dropCollection,
+  getIsoDateFormat: getIsoDateFormat
 }
