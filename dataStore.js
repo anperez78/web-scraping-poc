@@ -27,9 +27,9 @@ var calculateAndStoreAggregateData = co.wrap(function* (dbURL, collection, aggre
   item["_id"] = item_id;
 
   item["countDocuments"] =  yield countDocuments(dbURL, collection, currentDate);
-  item["countNullPrice"] =  yield countNullPrice(dbURL, collection);
-  item["countNaNPrice"] =  yield countNaNPrice(dbURL, collection);
-  item["avgPrice"] = yield calculateAveragePrice(dbURL, collection);
+  item["countNullPrice"] =  yield countNullPrice(dbURL, collection, currentDate);
+  item["countNaNPrice"] =  yield countNaNPrice(dbURL, collection, currentDate);
+  item["avgPrice"] = yield calculateAveragePrice(dbURL, collection, currentDate);
 
   var db = yield MongoClient.connect(dbURL);
   var r = yield db.collection(aggregateCollection).insertOne(item);
@@ -37,9 +37,7 @@ var calculateAndStoreAggregateData = co.wrap(function* (dbURL, collection, aggre
 });
 
 var countDocuments = co.wrap(function* (url, collection, limitDate) {
-
   var limitDateLimit = moment(limitDate).add(1, 'days');
-
   var db = yield MongoClient.connect(url);
   var count = yield db.collection(collection).find(
       {"_id.date":
@@ -54,27 +52,61 @@ var countDocuments = co.wrap(function* (url, collection, limitDate) {
   return count;
 });
 
-var countNullPrice = co.wrap(function* (url, collection) {
+var countNullPrice = co.wrap(function* (url, collection, limitDate) {
+  var limitDateLimit = moment(limitDate).add(1, 'days');
   var db = yield MongoClient.connect(url);
-  var count = yield db.collection(collection).find({price: null}).count();
+  var count = yield db.collection(collection).find(
+      {"_id.date":
+        {
+          $gte: new Date(getIsoDateFormat(limitDate)),
+          $lt: new Date(getIsoDateFormat(limitDateLimit))
+        },
+        price: null
+      }
+    ).count();
   db.close();
   console.log("Number of records with null price for " + collection + " -> ", count);
   return count;
 });
 
-var countNaNPrice = co.wrap(function* (url, collection) {
+var countNaNPrice = co.wrap(function* (url, collection, limitDate) {
+  var limitDateLimit = moment(limitDate).add(1, 'days');
   var db = yield MongoClient.connect(url);
-  var count = yield db.collection(collection).find({price: NaN}).count();
+  var count = yield db.collection(collection).find(
+      {"_id.date":
+        {
+          $gte: new Date(getIsoDateFormat(limitDate)),
+          $lt: new Date(getIsoDateFormat(limitDateLimit))
+        },
+        price: NaN
+      }
+    ).count();
   db.close();
   console.log("Number of records with NaN price for " + collection + " -> ", count);
   return count;
 });
 
-var calculateAveragePrice = co.wrap(function* (url, collection) {
+var calculateAveragePrice = co.wrap(function* (url, collection, limitDate) {
+  var limitDateLimit = moment(limitDate).add(1, 'days');
   var db = yield MongoClient.connect(url);
   var avgPrice = yield db.collection(collection).aggregate(
      [
-       { $group: { _id: null, avg: { $avg: '$price' } } }
+       {
+         $match: {
+           "_id.date": {
+             $gte: new Date(getIsoDateFormat(limitDate)),
+             $lt: new Date(getIsoDateFormat(limitDateLimit))
+           }
+         }
+       },
+       {
+         $group: {
+           _id: null,
+           avg: {
+             $avg: '$price'
+           }
+         }
+       }
      ]
   ).toArray();
   db.close();
@@ -86,15 +118,11 @@ var calculateAveragePrice = co.wrap(function* (url, collection) {
   else return null;
 });
 
-var dropCollection = function(url, collection) {
-  co(function*() {
+var dropCollection = co.wrap(function* (url, collection) {
     var db = yield MongoClient.connect(url);
     var avgPrice = yield db.collection(collection).drop();
     db.close();
-  }).catch(function(err) {
-    console.log(err.stack);
-  });
-}
+});
 
 var getIsoDateFormat = function (theDate) {
   var momentDate = moment(theDate);
@@ -105,5 +133,6 @@ module.exports = {
   storeAllData: storeAllData,
   countDocuments: countDocuments,
   dropCollection: dropCollection,
-  getIsoDateFormat: getIsoDateFormat
+  getIsoDateFormat: getIsoDateFormat,
+  calculateAveragePrice: calculateAveragePrice
 }
