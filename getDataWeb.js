@@ -66,7 +66,6 @@ var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
   }
 
   request(url, function(error, response, html){
-
       if(!error){
           console.log ('Processing ', url);
           var $ = cheerio.load(html);
@@ -81,8 +80,14 @@ var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
                 resultList.push(item);
               }
             });
-            counter++;
-            getWebData(baseURL, filter, counter, resultList, callback);
+
+            if ($('.next').length == 0) {
+              callback(resultList, filter.collection);
+            }
+            else {
+              counter++;
+              getWebData(baseURL, filter, counter, resultList, callback);
+            }
           }
       }
   });
