@@ -69,7 +69,13 @@ var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
       if(!error){
           console.log ('Processing ', url);
           var $ = cheerio.load(html);
+
+          if ( $('.g-recaptcha').length > 0) {
+            console.log ('Error: too many requests');
+          }
+
           if ($('article').length == 0) {
+            console.log ('No articles found. Calling callback.');
             callback(resultList, filter.collection);
           }
           else {
@@ -82,6 +88,7 @@ var getWebData = function(baseURL, filter, counter, resultList,  callback ) {
             });
 
             if ($('.next').length == 0) {
+              console.log ('No next link found. Calling callback.');
               callback(resultList, filter.collection);
             }
             else {
